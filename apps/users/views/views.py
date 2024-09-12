@@ -15,14 +15,6 @@ class UserListView(APIView):
         return Response(serializer.data)
 
 
-class UserDeleteAllView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-
-    def delete(self, request):
-        User.objects.all().delete()
-        return Response({'message': 'All users deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
-
-
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
 

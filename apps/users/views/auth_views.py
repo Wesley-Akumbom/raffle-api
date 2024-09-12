@@ -29,4 +29,4 @@ class RegisterView(APIView):
         return Response({'message': 'User registered successfully', 'username': user.username},
                         status=status.HTTP_201_CREATED)
 
-
+#TODO: User created with role admin should be regarded as a system admin and have admin rights
