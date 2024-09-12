@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import config
@@ -51,6 +51,21 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
 ] + LOCAL_APPS
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=360),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': config('ALGORITHM'),
+    'SIGNING_KEY': config('SECRET_KEY'),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': config('USER_ID_FIELD'),
+    'USER_ID_CLAIM': config('USER_ID_CLAIM'),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_ID_CLAIM': 'user_id',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
