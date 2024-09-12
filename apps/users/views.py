@@ -1,43 +1,79 @@
-from rest_framework import permissions, status
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
-
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from apps.users.models import User
-from apps.users.serializer import UserSerializer
+from apps.users.serializers import UserSerializer
 
 
-class RegisterView(APIView):
-    permission_classes = [permissions.AllowAny]
+class UserListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+class UserDeleteAllView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def delete(self, request):
+        User.objects.all().delete()
+        return Response({'message': 'All users deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, id):
+        try:
+            return User.objects.get(id=id)
+        except User.DoesNotExist:
+            return None
+
+    def get(self, request, id):
+        user = self.get_object(id)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+
+class UserUpdateView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_object(self, id):
+        try:
+            return User.objects.get(id=id)
+        except User.DoesNotExist:
+            return None
+
+    def put(self, request, id):
+        user = self.get_object(id)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserSerializer(user, data=request.data)
         if serializer.is_valid():
-            user = serializer.save()  # The role is already set by default in the model
-            return Response({'message': 'User registered successfully', 'username': user.username},
-                            status=status.HTTP_201_CREATED)
+            serializer.save()
+            return Response({'message': 'User updated successfully'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LoginView(APIView):
-    permission_classes = [permissions.AllowAny]
+class UserDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-
+    def get_object(self, id):
         try:
-            user = User.objects.get(username=username)
-            if user.check_password(password):
-                # Generate JWT tokens
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                    'role': user.role  # Include the user's role in the response
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+            return User.objects.get(id=id)
         except User.DoesNotExist:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+            return None
+
+    def delete(self, request, id):
+        user = self.get_object(id)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        user.delete()
+        return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
