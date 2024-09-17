@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     RaffleCreateView, RaffleListView, RaffleDetailView,
-    RaffleUpdateView, RaffleDeleteView
+    RaffleUpdateView, RaffleDeleteView, RunRaffleView
 )
 
 urlpatterns = [
@@ -10,4 +10,5 @@ urlpatterns = [
     path('<int:id>', RaffleDetailView.as_view(), name='raffle-detail'),
     path('update/<int:id>/', RaffleUpdateView.as_view(), name='raffle-update'),
     path('delete/<int:id>', RaffleDeleteView.as_view(), name='raffle-delete'),
+    path('run/<int:raffle_id>/', RunRaffleView.as_view(), name='run-raffle'),
 ]
