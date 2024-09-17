@@ -11,6 +11,7 @@ class PaymentStatus(models.TextChoices):
 
 
 class Payment(BaseModel):
+
     class PaymentManager(models.Manager):
         pass
 

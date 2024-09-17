@@ -7,6 +7,7 @@ from .serializers import PaymentSerializer
 import stripe
 from django.conf import settings
 
+from ..ticketHolders.models import TicketHolders
 from ..tickets.models import Ticket
 
 stripe.api_key = settings.STRIPE_TEST_SECRET_KEY
@@ -16,33 +17,38 @@ class PaymentView(APIView):
     def post(self, request):
         try:
             ticket_id = request.data['ticket_id']
-            payment_method_id = request.data['payment_method_id']  # Get the payment method ID from the request
+            payment_method_id = request.data['payment_method_id']
 
-            # Retrieve the ticket object from the database
             ticket = Ticket.objects.get(id=ticket_id)
 
-            # Create a new payment intent with the payment method ID
             payment_intent = stripe.PaymentIntent.create(
-                amount=int(ticket.price * 100),  # Convert to cents
+                amount=int(ticket.price * 100),
                 currency='usd',
                 payment_method=payment_method_id,
-                confirm=True,  # Automatically confirm the payment intent
+                confirm=True,
                 automatic_payment_methods={
                     'enabled': True,
-                    'allow_redirects': 'never'  # Disable redirects for automatic payments
+                    'allow_redirects': 'never'
                 }
             )
 
-            # Create a new payment object in your database
             payment = Payment.objects.create(
                 user=request.user,
                 ticket=ticket,
-                payment_method='card',  # Indicate that the payment method is a card
+                payment_method='card',
                 payment_status=PaymentStatus.SUCCEEDED if payment_intent.status == 'succeeded' else PaymentStatus.FAILED,
                 payment_amount=ticket.price,
                 currency='usd',
                 stripe_payment_intent_id=payment_intent.id,
             )
+
+            # Create a TicketUsers entry if the payment is successful
+            if payment.payment_status == PaymentStatus.SUCCEEDED:
+                ticket_user = TicketHolders.objects.create(
+                    user=request.user,
+                    ticket=ticket,
+                    purchase_date=payment.payment_date  # Set the purchase date to the payment date
+                )
 
             serializer = PaymentSerializer(payment)
 

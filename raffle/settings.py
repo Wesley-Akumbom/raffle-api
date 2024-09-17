@@ -39,7 +39,8 @@ LOCAL_APPS = [
     'apps.tickets',
     'apps.payments',
     'apps.winners',
-    'apps.core'
+    'apps.core',
+    'apps.ticketHolders'
 ]
 
 INSTALLED_APPS = [
