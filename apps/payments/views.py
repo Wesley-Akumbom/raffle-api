@@ -1,7 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import status
-from rest_framework.response import Response
+from rest_framework import serializers, status
 from rest_framework.views import APIView
+from rest_framework.response import Response
 from .models import Payment, PaymentStatus
 from .serializers import PaymentSerializer
 import stripe
@@ -10,38 +10,44 @@ from django.conf import settings
 from ..tickets.models import Ticket
 
 stripe.api_key = settings.STRIPE_TEST_SECRET_KEY
-stripe_public_key = settings.STRIPE_TEST_PUBLIC_KEY
 
 
 class PaymentView(APIView):
     def post(self, request):
         try:
             ticket_id = request.data['ticket_id']
+            payment_method_id = request.data['payment_method_id']  # Get the payment method ID from the request
+
+            # Retrieve the ticket object from the database
             ticket = Ticket.objects.get(id=ticket_id)
 
-            # Create a new payment intent with the exact amount
+            # Create a new payment intent with the payment method ID
             payment_intent = stripe.PaymentIntent.create(
                 amount=int(ticket.price * 100),  # Convert to cents
                 currency='usd',
-                payment_method_types=['card']
+                payment_method=payment_method_id,
+                confirm=True,  # Automatically confirm the payment intent
+                automatic_payment_methods={
+                    'enabled': True,
+                    'allow_redirects': 'never'  # Disable redirects for automatic payments
+                }
             )
 
-            # Create a new payment object
+            # Create a new payment object in your database
             payment = Payment.objects.create(
                 user=request.user,
                 ticket=ticket,
-                payment_status=PaymentStatus.PENDING,
+                payment_method='card',  # Indicate that the payment method is a card
+                payment_status=PaymentStatus.SUCCEEDED if payment_intent.status == 'succeeded' else PaymentStatus.FAILED,
                 payment_amount=ticket.price,
                 currency='usd',
                 stripe_payment_intent_id=payment_intent.id,
             )
 
-            # Serialize the payment object
             serializer = PaymentSerializer(payment)
 
             return Response({
                 'payment': serializer.data,
-                'client_secret': payment_intent.client_secret
             }, status=status.HTTP_201_CREATED)
 
         except stripe.error.CardError as e:
