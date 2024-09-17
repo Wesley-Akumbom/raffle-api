@@ -10,6 +10,8 @@ class Raffle(BaseModel):
         pass
 
     name = models.CharField(max_length=255)
+    prize_name = models.CharField(max_length=255)
+    prize_img = models.ImageField(upload_to='images')
     num_winners = models.PositiveIntegerField()
     participants = models.ManyToManyField(User, related_name='raffles', blank=True)
 

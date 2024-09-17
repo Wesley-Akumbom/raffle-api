@@ -5,4 +5,4 @@ from .models import Raffle
 class RaffleSerializer(ModelSerializer):
     class Meta:
         model = Raffle
-        fields = '__all__'
+        fields = ['id', 'name', 'num_winners', 'prize_name', 'prize_img']
