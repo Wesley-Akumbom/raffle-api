@@ -31,7 +31,7 @@ class RaffleUpdateView(APIView):
 
 
 class RaffleListView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         raffles = Raffle.objects.all()

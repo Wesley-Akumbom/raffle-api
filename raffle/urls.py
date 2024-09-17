@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/auth/', include('apps.users.urls.auth_urls')),
     path('api/users/', include('apps.users.urls.urls')),
     path('api/raffles/', include('apps.raffles.urls')),
+    path('api/tickets/', include('apps.tickets.urls')),
 ]
