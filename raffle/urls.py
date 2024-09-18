@@ -11,7 +11,7 @@ urlpatterns = [
     path('api/raffles/', include('apps.raffles.urls')),
     path('api/tickets/', include('apps.tickets.urls')),
     path('api/payments/', include('apps.payments.urls')),
-    path('api/ticketholders/', include('apps.ticketHolders.urls')),
+    path('api/ticket-holders/', include('apps.ticketHolders.urls')),
 ]
 
 if settings.DEBUG:
