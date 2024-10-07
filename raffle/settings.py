@@ -167,9 +167,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Stripe settings
-STRIPE_TEST_PUBLIC_KEY = config('STRIPE_TEST_PUBLIC_KEY')
-STRIPE_TEST_SECRET_KEY = config('STRIPE_TEST_SECRET_KEY')
+# Flutterwave API Key
+FLUTTERWAVE_SECRET_KEY = config('FLUTTERWAVE_SECRET_KEY')
 
 # Allow all origins for development (restrict this in production)
 CORS_ALLOW_ALL_ORIGINS = True

@@ -1,4 +1,6 @@
 from datetime import datetime
+from rest_framework import serializers
+from .models import Payment
 
 from rest_framework import serializers
 from .models import Payment
@@ -9,32 +11,28 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ['id', 'user', 'ticket', 'payment_method', 'payment_status', 'payment_amount',
-                  'currency', 'payment_date', 'stripe_payment_intent_id']
+        fields = [
+            'id',
+            'user',
+            'ticket',
+            'payment_method',
+            'payment_amount',
+            'currency',
+            'payment_date',
+            'flutterwave_transaction_id',  # Use the correct field name
+            'flutterwave_transaction_status'  # Use the correct field name
+        ]
 
     def get_payment_method(self, obj):
-        # Return a fixed test card number
-        return "4242 4242 4242 4242"
-
-
-def check_expiry_month(value):
-    if not 1 <= int(value) <= 12:
-        raise serializers.ValidationError("Invalid expiry month.")
-
-
-def check_expiry_year(value):
-    today = datetime.now().year
-    if not int(value) >= today:
-        raise serializers.ValidationError("Invalid expiry year.")
-
-
-def check_cvc(value):
-    if not 3 <= len(value) <= 4:
-        raise serializers.ValidationError("Invalid CVC number.")
+        # Return the payment method as "Mobile Money" (or customize as needed)
+        return "Mobile Money"
 
 
 class PaymentMethodSerializer(serializers.Serializer):
-    card_number = serializers.CharField(max_length=16, required=True)
-    expiry_month = serializers.CharField(max_length=2, required=True, validators=[check_expiry_month])
-    expiry_year = serializers.CharField(max_length=4, required=True, validators=[check_expiry_year])
-    cvc = serializers.CharField(max_length=4, required=True, validators=[check_cvc])
+    phone_number = serializers.CharField(max_length=15, required=True)  # Adjust max_length as necessary
+
+    def validate_phone_number(self, value):
+        # Add any specific validation for phone numbers if needed
+        if len(value) < 9 or len(value) > 15:  # Example validation for Cameroon phone numbers
+            raise serializers.ValidationError("Invalid phone number.")
+        return value

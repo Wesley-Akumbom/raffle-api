@@ -1,101 +1,177 @@
+import uuid
+
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import serializers, status
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
+from rest_framework.utils import json
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Payment, PaymentStatus
-from .serializers import PaymentSerializer
-import stripe
-from django.conf import settings
 
+from .models import Payment
+from .serializers import PaymentSerializer
+
+from .utils.flutterwave_client import FlutterwaveClient
 from ..ticketHolders.models import TicketHolders
 from ..tickets.models import Ticket
-
-stripe.api_key = settings.STRIPE_TEST_SECRET_KEY
 
 
 class PaymentView(APIView):
     def post(self, request):
         try:
             ticket_id = request.data['ticket_id']
-            payment_method_id = request.data['payment_method_id']
+            phone_number = request.data['phone_number']
+
+            user = request.user
+            fullname = user.username
 
             ticket = Ticket.objects.get(id=ticket_id)
 
-            payment_intent = stripe.PaymentIntent.create(
-                amount=int(ticket.price * 100),
-                currency='usd',
-                payment_method=payment_method_id,
-                confirm=True,
-                automatic_payment_methods={
-                    'enabled': True,
-                    'allow_redirects': 'never'
-                }
+            flutterwave_client = FlutterwaveClient()
+            tx_ref = str(uuid.uuid4())
+
+            payment_request = flutterwave_client.initiate_mobile_money_payment(
+                amount=float(ticket.price),
+                phone_number=phone_number,
+                tx_ref=tx_ref,
+                fullname=fullname
             )
+
+            print("Payment request response:", payment_request)
 
             payment = Payment.objects.create(
                 user=request.user,
                 ticket=ticket,
-                payment_method='card',
-                payment_status=PaymentStatus.SUCCEEDED if payment_intent.status == 'succeeded' else PaymentStatus.FAILED,
+                payment_method='mobilemoney',
                 payment_amount=ticket.price,
-                currency='usd',
-                stripe_payment_intent_id=payment_intent.id,
+                currency='XAF',
+                flutterwave_transaction_id=tx_ref,
+                flutterwave_transaction_status=payment_request.get('status', 'UNKNOWN')
             )
 
-            # Create a TicketUsers entry if the payment is successful
-            if payment.payment_status == PaymentStatus.SUCCEEDED:
-                ticket_user = TicketHolders.objects.create(
-                    user=request.user,
-                    ticket=ticket,
-                    purchase_date=payment.payment_date  # Set the purchase date to the payment date
-                )
+            payment.save()
 
             serializer = PaymentSerializer(payment)
 
             return Response({
                 'payment': serializer.data,
-            }, status=status.HTTP_201_CREATED)
+                'flutterwave_transaction_id': tx_ref
+            }, status=status.HTTP_202_ACCEPTED)
 
-        except stripe.error.CardError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        except ObjectDoesNotExist:
+        except Ticket.DoesNotExist:
             return Response({'error': 'Ticket not found'}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class PaymentWebhookView(APIView):
+
+class PaymentView(APIView):
     def post(self, request):
-        payload = request.body
-        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, settings.STRIPE_TEST_SECRET_KEY  # Use your webhook secret here
+            ticket_id = request.data['ticket_id']
+            phone_number = request.data['phone_number']
+
+            user = request.user
+            fullname = user.username
+
+            ticket = Ticket.objects.get(id=ticket_id)
+
+            flutterwave_client = FlutterwaveClient()
+            tx_ref = str(uuid.uuid4())
+
+            payment_request = flutterwave_client.initiate_mobile_money_payment(
+                amount=float(ticket.price),
+                phone_number=phone_number,
+                tx_ref=tx_ref,
+                fullname=fullname
             )
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except stripe.error.SignatureVerificationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the payment intent ID from the event data
-        payment_intent_id = event['data']['object']['id']
+            print("Payment request response:", payment_request)
 
-        # Get the payment object
+            payment = Payment.objects.create(
+                user=request.user,
+                ticket=ticket,
+                payment_method='mobilemoney',
+                payment_amount=ticket.price,
+                currency='XAF',
+                flutterwave_transaction_id=tx_ref,
+                flutterwave_transaction_status=payment_request.get('status', 'UNKNOWN')
+            )
+
+            serializer = PaymentSerializer(payment)
+
+            return Response({
+                'payment': serializer.data,
+                'flutterwave_transaction_id': tx_ref
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except Ticket.DoesNotExist:
+            return Response({'error': 'Ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CheckPaymentStatusView(APIView):
+    def get(self, request, transaction_id):
         try:
-            payment = Payment.objects.get(stripe_payment_intent_id=payment_intent_id)
-        except ObjectDoesNotExist:
+            payment = Payment.objects.get(flutterwave_transaction_id=transaction_id)  # Ensure the correct field is used
+            flutterwave_client = FlutterwaveClient()
+
+            status_response = flutterwave_client.check_transaction_status(transaction_id)
+
+            payment.flutterwave_transaction_status = status_response.get('status', 'UNKNOWN')  # Update transaction status
+            if status_response.get('status') == 'successful':
+                TicketHolders.objects.create(
+                    user=payment.user,
+                    ticket=payment.ticket,
+                    purchase_date=payment.payment_date
+                )
+            elif status_response.get('status') == 'failed':
+                # Handle failed payments if needed
+                pass
+
+            payment.save()
+
+            serializer = PaymentSerializer(payment)
+            return Response(serializer.data)
+
+        except Payment.DoesNotExist:
             return Response({'error': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update the payment status based on the event type
-        if event['type'] == 'payment_intent.succeeded':
-            payment.payment_status = PaymentStatus.SUCCEEDED
-        elif event['type'] == 'payment_intent.payment_failed':
-            payment.payment_status = PaymentStatus.FAILED
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Save the updated payment object
-        payment.save()
 
-        return Response({'message': 'Payment updated successfully'})
+@method_decorator(csrf_exempt, name='dispatch')
+class MoMoCallbackView(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            transaction_id = data.get('referenceId')  # Adjust based on actual payload structure
+            status = data.get('status')
+
+            payment = Payment.objects.get(flutterwave_transaction_id=transaction_id)  # Ensure the correct field is used
+            payment.flutterwave_transaction_status = status  # Update transaction status
+
+            if status == 'SUCCESSFUL':
+                TicketHolders.objects.create(
+                    user=payment.user,
+                    ticket=payment.ticket,
+                    purchase_date=payment.payment_date  # Use payment date for record keeping
+                )
+            elif status == 'FAILED':
+                # Handle failed payments if needed
+                pass
+
+            payment.save()
+
+            return Response({'message': 'Callback processed successfully'}, status=status.HTTP_200_OK)
+
+        except Payment.DoesNotExist:
+            print(f"Payment with transaction ID {transaction_id} not found.")
+            return Response({'error': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"Error in MoMo callback: {str(e)}")  # Log the error for debugging purposes
+            return Response({'error': 'Failed to process callback'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
