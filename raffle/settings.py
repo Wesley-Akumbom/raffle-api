@@ -30,7 +30,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = True
 
 # # Parse ALLOWED_HOSTS from environment variable
-# ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 
@@ -60,11 +60,11 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': config('ALGORITHM', default='HS256'),
+    'ALGORITHM': config('ALGORITHM'),
     'SIGNING_KEY': config('SECRET_KEY'),
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': config('USER_ID_FIELD', default='id'),
-    'USER_ID_CLAIM': config('USER_ID_CLAIM',default='user_id'),
+    'USER_ID_FIELD': config('USER_ID_FIELD'),
+    'USER_ID_CLAIM': config('USER_ID_CLAIM'),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
     'TOKEN_USER_ID_CLAIM': 'user_id',
