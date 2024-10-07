@@ -20,3 +20,5 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
+      - key: ALGORITHM               # Add this line
+        value: "your_default_algorithm_value"  # Replace with your default value
