@@ -29,8 +29,8 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# Parse ALLOWED_HOSTS from environment variable
-ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+# # Parse ALLOWED_HOSTS from environment variable
+# ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 
