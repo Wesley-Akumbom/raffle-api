@@ -39,6 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
 
     username = models.CharField(max_length=150, unique=True)
     password = models.CharField(max_length=128)
+    contact = models.CharField(max_length=20)
     role = models.CharField(max_length=25, choices=ROLE_CHOICES, default='participant')
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
