@@ -1,16 +1,16 @@
 databases:
   - name: raffle-db
     plan: free
-    databaseName: raffle_db  # Changed to match your local database name
-    user: duke              # Changed to match your local PostgreSQL username
+    databaseName: raffle_db
+    user: duke
 
 services:
   - type: web
     plan: free
-    name: raffle-api           # Changed to reflect your project name
+    name: raffle-api
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "python -m gunicorn raffle.asgi:application -k uvicorn.workers.UvicornWorker"  # Updated to match your project structure
+    startCommand: "python -m gunicorn raffle.asgi:application -k uvicorn.workers.UvicornWorker"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -20,5 +20,17 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
-      - key: ALGORITHM               # Add this line
-        value: "HS256"  # Replace with your default value
+      - key: ALGORITHM
+        value: "HS256"
+      - key: USER_ID_FIELD
+        value: "id"
+      - key: USER_ID_CLAIM
+        value: "user_id"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: DEBUG
+        value: "False"
+      - key: FLUTTERWAVE_SECRET_KEY
+        sync: false
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
