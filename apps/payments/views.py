@@ -1,6 +1,5 @@
 import uuid
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
@@ -25,11 +24,13 @@ class PaymentView(APIView):
             user = request.user
             fullname = user.username
 
+            # Fetch the ticket using the provided ticket_id
             ticket = Ticket.objects.get(id=ticket_id)
 
             flutterwave_client = FlutterwaveClient()
-            tx_ref = str(uuid.uuid4())
+            tx_ref = str(uuid.uuid4())  # Generate a unique transaction reference
 
+            # Initiate mobile money payment request
             payment_request = flutterwave_client.initiate_mobile_money_payment(
                 amount=float(ticket.price),
                 phone_number=phone_number,
@@ -37,8 +38,10 @@ class PaymentView(APIView):
                 fullname=fullname
             )
 
+            # Log the payment request response
             print("Payment request response:", payment_request)
 
+            # Create the payment record
             payment = Payment.objects.create(
                 user=request.user,
                 ticket=ticket,
@@ -49,61 +52,19 @@ class PaymentView(APIView):
                 flutterwave_transaction_status=payment_request.get('status', 'UNKNOWN')
             )
 
-            payment.save()
+            # Check if the transaction status is 'successful' to create TicketHolders instance
+            if payment.flutterwave_transaction_status == 'success':
+                TicketHolders.objects.create(
+                    user=payment.user,
+                    ticket=payment.ticket,
+                    purchase_date=payment.payment_date  # Use payment date for record keeping
+                )
 
             serializer = PaymentSerializer(payment)
 
             return Response({
                 'payment': serializer.data,
-                'flutterwave_transaction_id': tx_ref
-            }, status=status.HTTP_202_ACCEPTED)
-
-        except Ticket.DoesNotExist:
-            return Response({'error': 'Ticket not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-class PaymentView(APIView):
-    def post(self, request):
-        try:
-            ticket_id = request.data['ticket_id']
-            phone_number = request.data['phone_number']
-
-            user = request.user
-            fullname = user.username
-
-            ticket = Ticket.objects.get(id=ticket_id)
-
-            flutterwave_client = FlutterwaveClient()
-            tx_ref = str(uuid.uuid4())
-
-            payment_request = flutterwave_client.initiate_mobile_money_payment(
-                amount=float(ticket.price),
-                phone_number=phone_number,
-                tx_ref=tx_ref,
-                fullname=fullname
-            )
-
-            print("Payment request response:", payment_request)
-
-            payment = Payment.objects.create(
-                user=request.user,
-                ticket=ticket,
-                payment_method='mobilemoney',
-                payment_amount=ticket.price,
-                currency='XAF',
-                flutterwave_transaction_id=tx_ref,
-                flutterwave_transaction_status=payment_request.get('status', 'UNKNOWN')
-            )
-
-            serializer = PaymentSerializer(payment)
-
-            return Response({
-                'payment': serializer.data,
-                'flutterwave_transaction_id': tx_ref
+                'flutterwave_transaction_id': tx_ref  # Return the transaction reference
             }, status=status.HTTP_202_ACCEPTED)
 
         except Ticket.DoesNotExist:
@@ -121,7 +82,8 @@ class CheckPaymentStatusView(APIView):
 
             status_response = flutterwave_client.check_transaction_status(transaction_id)
 
-            payment.flutterwave_transaction_status = status_response.get('status', 'UNKNOWN')  # Update transaction status
+            payment.flutterwave_transaction_status = status_response.get('status',
+                                                                         'UNKNOWN')  # Update transaction status
             if status_response.get('status') == 'successful':
                 TicketHolders.objects.create(
                     user=payment.user,
