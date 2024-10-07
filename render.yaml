@@ -2,7 +2,7 @@ databases:
   - name: raffle-db
     plan: free
     databaseName: raffle_db  # Changed to match your local database name
-    user: postgres              # Changed to match your local PostgreSQL username
+    user: duke              # Changed to match your local PostgreSQL username
 
 services:
   - type: web
