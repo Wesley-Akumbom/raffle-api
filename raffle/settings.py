@@ -29,7 +29,8 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Parse ALLOWED_HOSTS from environment variable
+ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 
@@ -119,7 +120,7 @@ WSGI_APPLICATION = 'raffle.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         # Replace this value with your local database's connection string.
-        default='postgresql://postgres:postgres@localhost:5432/raffle_db',
+        default=config('DATABASE_URL'),
         conn_max_age=600
     )
 }
