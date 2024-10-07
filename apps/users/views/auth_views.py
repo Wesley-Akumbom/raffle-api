@@ -14,7 +14,6 @@ class RegisterView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        contact = request.data.get('contact')
         is_superuser = request.data.get('is_superuser', False)
 
         # Validate input
@@ -23,9 +22,9 @@ class RegisterView(APIView):
 
         # Use UserManager to create user or superuser
         if is_superuser:
-            user = User.objects.create_superuser(username=username, password=password, contact=contact)
+            user = User.objects.create_superuser(username=username, password=password)
         else:
-            user = User.objects.create_user(username=username, password=password, contact=contact)
+            user = User.objects.create_user(username=username, password=password)
 
         return Response({'message': 'User registered successfully', 'username': user.username},
                         status=status.HTTP_201_CREATED)
